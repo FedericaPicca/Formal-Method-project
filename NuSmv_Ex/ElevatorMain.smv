@@ -1,0 +1,126 @@
+MODULE button(floor, door_closed)
+VAR
+  button : array 0..4 of boolean;
+  button_pressed : boolean;
+
+ASSIGN
+  -- Initialize all buttons to FALSE
+  init(button[0]) := FALSE;
+  init(button[1]) := FALSE;
+  init(button[2]) := FALSE;
+  init(button[3]) := FALSE;
+  init(button[4]) := FALSE;
+  init(button_pressed) := FALSE;
+
+  -- Update the state of each button
+  next(button[0]) := case
+    floor = 0 : FALSE;
+    TRUE : button[0];
+  esac;
+
+  next(button[1]) := case
+    floor = 1 : FALSE;
+    TRUE : button[1];
+  esac;
+
+  next(button[2]) := case
+    floor = 2 : FALSE;
+    TRUE : button[2];
+  esac;
+
+  next(button[3]) := case
+    floor = 3 : FALSE;
+    TRUE : button[3];
+  esac;
+
+  next(button[4]) := case
+    floor = 4 : FALSE;
+    TRUE : button[4];
+  esac;
+
+  -- Update the state of button_pressed
+  next(button_pressed) := case
+    !button[0] & !button[1] & !button[2] & !button[3] & !button[4]:TRUE;
+    floor = 3 & door_closed = FALSE : FALSE;
+    TRUE : button_pressed;
+  esac;
+
+
+
+
+MODULE door(direction_up, direction_down, floor, button, button_pressed)
+VAR
+  door_closed : boolean;                                                  -- Indicates whether the door is currently closed
+
+INIT
+  door_closed = TRUE;                                                     -- The door starts in the closed state
+
+ASSIGN
+  -- Update the state of the door
+  next(door_closed) := case
+    button[floor] : FALSE;                                                -- Open the door if the button for the current floor is pressed
+    button_pressed & floor = 3 : FALSE;                                   -- Special rule: Open the door if on floor 3 and a button is pressed
+    !door_closed : TRUE;                                                  -- If the door is open, it will close
+    TRUE : door_closed;                                                   -- In all other cases, keep the door closed
+  esac;
+
+
+
+
+MODULE cabin(door_closed, floor, button, button_pressed)
+VAR
+  direction_up : boolean;                                                  -- Indicates if the cabin is moving up
+  direction_down : boolean;                                                -- Indicates if the cabin is moving down
+
+INIT
+  -- Initially, the cabin is stationary (not moving up or down)
+  direction_down = FALSE &
+  direction_up = FALSE;
+
+ASSIGN
+  -- Update the state of direction_up
+  next(direction_up) := case
+    button_pressed & floor < 3 & door_closed : TRUE;                        -- Move up if a button is pressed, below floor 3, and the door is closed
+    floor = 3 : FALSE;                                                      -- Stop moving up if the cabin reaches floor 3
+    button[floor + 1] & door_closed & floor < 4 : TRUE;                     -- Move up if a higher floor's button is pressed and the door is closed
+    TRUE : FALSE;                                                           -- Default case: stop moving up
+  esac;
+
+  -- Update the state of direction_down
+  next(direction_down) := case
+    button_pressed & floor > 3 & door_closed : TRUE;                        -- Move down if a button is pressed, above floor 3, and the door is closed
+    floor = 3 : FALSE;                                                      -- Stop moving down if the cabin reaches floor 3
+    button[floor - 1] & door_closed & floor > 0 : TRUE;                     -- Move down if a lower floor's button is pressed and the door is closed
+    TRUE : FALSE;                                                           -- Default case: stop moving down
+  esac;
+
+
+
+
+MODULE floor(direction_up, direction_down)
+VAR
+  floor : 0..4;
+
+ASSIGN
+  init(floor) := 1;
+
+  next(floor) := case
+    direction_up & floor < 4 : floor + 1;
+    direction_down & floor > 0 : floor -1 ;
+    TRUE:floor;
+  esac;
+
+
+
+MODULE main
+VAR
+  b : button(f.floor, d.door_closed);
+  f : floor(c.direction_up, c.direction_down);  
+  c : cabin(d.door_closed, f.floor, b.button, b.button_pressed); 
+  d : door(c.direction_up, c.direction_down, f.floor, b.button, b.button_pressed);
+
+CTLSPEC AG(!d.door_closed -> !(c.direction_up | c.direction_down));
+CTLSPEC AG(!d.door_closed -> EF d.door_closed);
+CTLSPEC AG(d.door_closed -> EF (!d.door_closed));
+CTLSPEC AG(c.direction_up -> !(f.floor = 4));
+CTLSPEC AG(c.direction_down -> !(f.floor =0)); 

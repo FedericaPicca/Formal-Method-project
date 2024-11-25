@@ -1,0 +1,15 @@
+read_model -i ex/ElevatorMain.smv
+
+flatten_hierarchy
+
+encode_variables
+
+build_model
+
+check_ctlspec -p "AG(!d.door_closed -> !(c.direction_up | c.direction_down))"
+check_ctlspec -p "AG(!d.door_closed -> EF d.door_closed)"
+check_ctlspec -p "AG(d.door_closed -> EF (!d.door_closed))"
+check_ctlspec -p "AG(c.direction_up -> !(f.floor = 4))"
+check_ctlspec -p "AG(c.direction_down -> !(f.floor = 0))"
+
+
