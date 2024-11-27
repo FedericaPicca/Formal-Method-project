@@ -1,8 +1,8 @@
 MODULE button(floor, door_closed)
 VAR
-  button : array 1..5 of boolean;
-  button_pressed : boolean;
-
+  button : array 1..5 of boolean;                                            -- Represents buttons for each floor
+  button_pressed : boolean;                                                  -- Indicates if any button is pressed
+ 
 ASSIGN
   -- Initialize all buttons to FALSE
   init(button[1]) := FALSE;
@@ -11,58 +11,57 @@ ASSIGN
   init(button[4]) := FALSE;
   init(button[5]) := FALSE;
   init(button_pressed) := FALSE;
-
+ 
   -- Update the state of each button
   next(button[1]) := case
-    floor = 1 : FALSE;
+    floor = 1 : FALSE;                                                        -- Reset the button if the cabin reaches the floor
     TRUE : button[1];
   esac;
-
+ 
   next(button[2]) := case
-    floor = 2 : FALSE;
+    floor = 2 : FALSE;                         
     TRUE : button[2];
   esac;
-
+ 
   next(button[3]) := case
-    floor = 3 : FALSE;
+    floor = 3 : FALSE;                    
     TRUE : button[3];
   esac;
-
+ 
   next(button[4]) := case
-    floor = 4 : FALSE;
+    floor = 4 : FALSE;                    
     TRUE : button[4];
   esac;
-
+ 
   next(button[5]) := case
-    floor = 5 : FALSE;
+    floor = 5 : FALSE;                    
     TRUE : button[5];
   esac;
-
+ 
   -- Update the state of button_pressed
   next(button_pressed) := case
-    !button[1] & !button[2] & !button[3] & !button[4] & !button[5]:TRUE;
-    door_closed = FALSE : FALSE;
-    TRUE : TRUE;
+    !button[1] & !button[2] & !button[3] & !button[4] & !button[5] : FALSE;    -- No button is pressed
+    door_closed = FALSE : FALSE;                                               -- Reset when the door opens
+    TRUE : TRUE;                                                               
   esac;
-
 
 
 
 MODULE door(direction_up, direction_down, floor, button, button_pressed)
 VAR
-  door_closed : boolean;                                                  -- Indicates whether the door is currently closed
-
+  door_closed : boolean;                                                      -- Indicates if the door is currently closed
+ 
 INIT
-  door_closed = TRUE;                                                     -- The door starts in the closed state
-
+  door_closed = TRUE;                                                         -- The door starts in the closed state
+ 
 ASSIGN
   -- Update the state of the door
   next(door_closed) := case
-    button[floor] : FALSE;                                                -- Open the door if the button for the current floor is pressed
-    !door_closed : TRUE;                                                  -- If the door is open, it will close
+    button[floor] : FALSE;                                                    -- Open the door if the button for the current floor is pressed
+    !door_closed : TRUE;                                                      -- If the door is open, it will close
     !button_pressed & direction_up = FALSE & direction_down = FALSE : FALSE;  -- Open the door if no buttons are pressed and the cabin is stationary
     TRUE : door_closed;                                                       -- Default case: Keep the door closed
-  esac
+  esac;
 
 
 
@@ -73,21 +72,23 @@ VAR
  
 INIT
   -- Initially, the cabin is stationary
-  direction_down := FALSE;
-  direction_up := FALSE;
+  direction_down = FALSE &
+  direction_up = FALSE;
  
 ASSIGN
-next(direction_up) := case
-  button_pressed & floor < 5 & door_closed : TRUE;  -- Move up if not at the top floor
-  floor = 5 : FALSE;                                -- Stop moving up at the top floor
-  TRUE : FALSE;                                     -- Default case: Stop moving down
-esac;
-
-next(direction_down) := case
-  button_pressed & floor > 1 & door_closed : TRUE;  -- Move down if not at the bottom floor
-  floor = 1 : FALSE;                                -- Stop moving down at the bottom floor
-  TRUE : FALSE;                                     -- Default case: Stop moving down
-esac;
+  -- Update the state of direction_up
+  next(direction_up) := case
+    button_pressed & floor < 5 & door_closed : TRUE;                         -- Move up if a button is pressed and the door is closed
+    floor = 5 : FALSE;                                                       -- Stop moving up at the top floor
+    TRUE : FALSE;                                                            -- Default case: Stop moving up
+  esac;
+ 
+  -- Update the state of direction_down
+  next(direction_down) := case
+    button_pressed & floor > 1 & door_closed : TRUE;                         -- Move down if a button is pressed and the door is closed
+    floor = 1 : FALSE;                                                       -- Stop moving down at the ground floor
+    TRUE : FALSE;                                                            -- Default case: Stop moving down
+  esac;
 
  
 
@@ -143,7 +144,7 @@ CTLSPEC AG(c.direction_up -> !(f.floor = 5));
 CTLSPEC AG(c.direction_down -> !(f.floor = 1)); 
 
 -- Specification: The elevator must eventually visit floor 5.
-CTLSPEC AG(AF f.floor = 5);
+CTLSPEC AG(AF (f.floor = 5));
 
 -- Specification: The elevator must eventually visit floor 4.
 CTLSPEC AG(AF f.floor = 4);
