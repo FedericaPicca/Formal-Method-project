@@ -100,8 +100,7 @@ VAR
 
 ASSIGN
   init(floor) := 1;                                                         -- The elevator starts at floor 1
-  init(direction_up) := FALSE;                                              -- Initially stationary
-  init(direction_down) := FALSE;
+  init(moving):= FALSE;                                                     -- Initially stationary
 
   next(floor) := case                                                       -- Update the floor based on the direction of movement
     direction_up & floor < 5 : floor + 1;                                   -- If moving up and not yet at the top floor, increment the floor
@@ -109,15 +108,7 @@ ASSIGN
     TRUE:floor;                                                             -- If not moving or at the limits, stay on the current floor
   esac;
 
-  -- Update the moving status based on the direction
-  next(moving) := case
-    -- The elevator is moving if either direction is active
-    direction_up | direction_down : TRUE;
-
-    TRUE : FALSE;                                                           -- The elevator stops if there is no active direction
-  esac;
-
-
+next(moving) := direction_up | direction_down;                            -- Moving depends exclusively on the direction signals
 
 MODULE main
 VAR
@@ -144,19 +135,19 @@ CTLSPEC AG(c.direction_up -> !(f.floor = 5));
 CTLSPEC AG(c.direction_down -> !(f.floor = 1)); 
 
 -- Specification: The elevator must eventually visit floor 5.
-CTLSPEC AG(AF (f.floor = 5));
+CTLSPEC AG(b.button[5] -> AF (f.floor = 5));
 
 -- Specification: The elevator must eventually visit floor 4.
-CTLSPEC AG(AF f.floor = 4);
+CTLSPEC AG(b.button[4] -> AF (f.floor = 4));
 
 -- Specification: The elevator must eventually visit floor 3.
-CTLSPEC AG(AF f.floor = 3);
+CTLSPEC AG(b.button[3] -> AF (f.floor = 3));
 
 -- Specification: The elevator must eventually visit floor 2.
-CTLSPEC AG(AF f.floor = 2);
+CTLSPEC AG(b.button[2] -> AF (f.floor = 2));
 
 -- Specification: The elevator must eventually visit floor 1.
-CTLSPEC AG(AF f.floor = 1);
+CTLSPEC AG(b.button[1] -> AF (f.floor = 1));
 
 -- Specification: If the button for floor 3 is pressed, the elevator must eventually reach floor 3.
 CTLSPEC AG(b.button[3] -> EF f.floor = 3);
@@ -178,6 +169,18 @@ CTLSPEC AG(!c.direction_up & !c.direction_down -> !f.moving);
 -- Specification: If the elevator is not moving, it must remain on the same floor.
 CTLSPEC AG(!f.moving -> AG(f.floor = f.floor));
 
+-- Specification: If any button is pressed, the elevator must eventually stop moving and open its door.
+-- This ensures that the elevator fulfills the user's request by stopping at the correct floor and allowing entry or exit.
+CTLSPEC AG(b.button_pressed -> EF (!f.moving & !d.door_closed));
+
+-- Specification: If the elevator is stationary and a button for the current floor is pressed, 
+-- the door must eventually open. This guarantees that the elevator responds to requests 
+-- at its current position by allowing passengers to enter or exit.
+CTLSPEC AG((b.button[f.floor] & f.moving = FALSE) -> !d.door_closed);
+
+-- Specification: If no buttons are pressed, the elevator must remain stationary.
+-- This prevents unnecessary movement, optimizing efficiency and reducing wear on the elevator system.
+CTLSPEC AG(!b.button_pressed -> !f.moving);
 
 
 
