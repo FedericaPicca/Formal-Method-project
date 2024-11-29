@@ -134,23 +134,20 @@ CTLSPEC AG(c.direction_up -> !(f.floor = 5));
 -- Specification: The cabin should not move down below the ground floor
 CTLSPEC AG(c.direction_down -> !(f.floor = 1)); 
 
--- Specification: The elevator must eventually visit floor 5.
-CTLSPEC AG(b.button[5] -> AF (f.floor = 5));
+-- Specification: There exists a path where if the button for floor 5 is pressed, the elevator eventually visits floor 5.
+CTLSPEC AG(b.button[5] & EF (f.floor = 5));
 
--- Specification: The elevator must eventually visit floor 4.
-CTLSPEC AG(b.button[4] -> AF (f.floor = 4));
+-- Specification: There exists a path where if the button for floor 4 is pressed, the elevator eventually visits floor 4.
+CTLSPEC AG(b.button[4] & EF (f.floor = 4));
 
--- Specification: The elevator must eventually visit floor 3.
-CTLSPEC AG(b.button[3] -> AF (f.floor = 3));
+-- Specification: There exists a path where if the button for floor 3 is pressed, the elevator eventually visits floor 3.
+CTLSPEC AG(b.button[3] & EF (f.floor = 3));
 
--- Specification: The elevator must eventually visit floor 2.
-CTLSPEC AG(b.button[2] -> AF (f.floor = 2));
+-- Specification: There exists a path where if the button for floor 2 is pressed, the elevator eventually visits floor 2.
+CTLSPEC AG(b.button[2] & EF (f.floor = 2));
 
--- Specification: The elevator must eventually visit floor 1.
-CTLSPEC AG(b.button[1] -> AF (f.floor = 1));
-
--- Specification: If the button for floor 3 is pressed, the elevator must eventually reach floor 3.
-CTLSPEC AG(b.button[3] -> EF f.floor = 3);
+-- Specification: There exists a path where if the button for floor 1 is pressed, the elevator eventually visits floor 1.
+CTLSPEC AG(b.button[1] & EF (f.floor = 1));
 
 -- Specification: If the elevator is on floor 1, 2, or 3, is moving up, and the button for floor 4 is pressed,
 -- then the elevator must eventually reach floor 4.
