@@ -1,0 +1,29 @@
+{
+    "states": [
+        "START",
+        "EVEN",
+        "ODD"
+    ],
+    "alphabet": [
+        "0",
+        "1"
+    ],
+    "start_state": "START",
+    "accept_states": [
+        "EVEN"
+    ],
+    "transitions": {
+        "START": {
+            "0": "EVEN",
+            "1": "ODD"
+        },
+        "EVEN": {
+            "0": "EVEN",
+            "1": "ODD"
+        },
+        "ODD": {
+            "0": "EVEN",
+            "1": "ODD"
+        }
+    }
+}

@@ -1,0 +1,185 @@
+MODULE button(floor, door_closed)
+VAR
+  button : array 1..5 of boolean;                                            -- Represents buttons for each floor
+  button_pressed : boolean;                                                  -- Indicates if any button is pressed
+ 
+ASSIGN
+  -- Initialize all buttons to FALSE
+  init(button[1]) := FALSE;
+  init(button[2]) := FALSE;
+  init(button[3]) := FALSE;
+  init(button[4]) := FALSE;
+  init(button[5]) := FALSE;
+  init(button_pressed) := FALSE;
+ 
+  -- Update the state of each button
+  next(button[1]) := case
+    floor = 1 : FALSE;                                                        -- Reset the button if the cabin reaches the floor
+    TRUE : button[1];
+  esac;
+ 
+  next(button[2]) := case
+    floor = 2 : FALSE;                         
+    TRUE : button[2];
+  esac;
+ 
+  next(button[3]) := case
+    floor = 3 : FALSE;                    
+    TRUE : button[3];
+  esac;
+ 
+  next(button[4]) := case
+    floor = 4 : FALSE;                    
+    TRUE : button[4];
+  esac;
+ 
+  next(button[5]) := case
+    floor = 5 : FALSE;                    
+    TRUE : button[5];
+  esac;
+ 
+  -- Update the state of button_pressed
+  next(button_pressed) := case
+    !button[1] & !button[2] & !button[3] & !button[4] & !button[5] : FALSE;    -- No button is pressed
+    door_closed = FALSE : FALSE;                                               -- Reset when the door opens
+    TRUE : TRUE;                                                               
+  esac;
+
+
+
+MODULE door(direction_up, direction_down, floor, button, button_pressed)
+VAR
+  door_closed : boolean;                                                      -- Indicates if the door is currently closed
+ 
+INIT
+  door_closed = TRUE;                                                         -- The door starts in the closed state
+ 
+ASSIGN
+  -- Update the state of the door
+  next(door_closed) := case
+    button[floor] : FALSE;                                                    -- Open the door if the button for the current floor is pressed
+    !door_closed : TRUE;                                                      -- If the door is open, it will close
+    !button_pressed & direction_up = FALSE & direction_down = FALSE : FALSE;  -- Open the door if no buttons are pressed and the cabin is stationary
+    TRUE : door_closed;                                                       -- Default case: Keep the door closed
+  esac;
+
+
+
+MODULE cabin(door_closed, floor, button, button_pressed)
+VAR
+  direction_up : boolean;                                                    -- Indicates if the cabin is moving up
+  direction_down : boolean;                                                  -- Indicates if the cabin is moving down
+ 
+INIT
+  -- Initially, the cabin is stationary
+  direction_down = FALSE &
+  direction_up = FALSE;
+ 
+ASSIGN
+  -- Update the state of direction_up
+  next(direction_up) := case
+    button_pressed & floor < 5 & door_closed : TRUE;                         -- Move up if a button is pressed and the door is closed
+    floor = 5 : FALSE;                                                       -- Stop moving up at the top floor
+    TRUE : FALSE;                                                            -- Default case: Stop moving up
+  esac;
+ 
+  -- Update the state of direction_down
+  next(direction_down) := case
+    button_pressed & floor > 1 & door_closed : TRUE;                         -- Move down if a button is pressed and the door is closed
+    floor = 1 : FALSE;                                                       -- Stop moving down at the ground floor
+    TRUE : FALSE;                                                            -- Default case: Stop moving down
+  esac;
+
+ 
+
+
+MODULE floor(direction_up, direction_down)
+VAR
+  floor : 1..5;                                                             -- The current floor of the elevator, ranging from 0 (lowest) to 4 (highest)
+  moving : boolean;                                                         -- Indicates whether the elevator is moving
+
+ASSIGN
+  init(floor) := 1;                                                         -- The elevator starts at floor 1
+  init(moving):= FALSE;                                                     -- Initially stationary
+
+  next(floor) := case                                                       -- Update the floor based on the direction of movement
+    direction_up & floor < 5 : floor + 1;                                   -- If moving up and not yet at the top floor, increment the floor
+    direction_down & floor > 1 : floor -1 ;                                 -- If moving down and not yet at the bottom floor, decrement the floor
+    TRUE:floor;                                                             -- If not moving or at the limits, stay on the current floor
+  esac;
+
+next(moving) := direction_up | direction_down;                            -- Moving depends exclusively on the direction signals
+
+MODULE main
+VAR
+  b : button(f.floor, d.door_closed);
+  f : floor(c.direction_up, c.direction_down);  
+  c : cabin(d.door_closed, f.floor, b.button, b.button_pressed); 
+  d : door(c.direction_up, c.direction_down, f.floor, b.button, b.button_pressed);
+
+
+-- Specifications
+
+CTLSPEC AG(!d.door_closed -> !(c.direction_up | c.direction_down));
+ 
+-- Specification: The door should eventually close if it is opened
+CTLSPEC AG(!d.door_closed -> EF d.door_closed);
+ 
+-- Specification: If the door is closed, it will eventually open
+CTLSPEC AG(d.door_closed -> EF (!d.door_closed));
+ 
+-- Specification: The cabin should not move up beyond the top floor
+CTLSPEC AG(c.direction_up -> !(f.floor = 5));
+ 
+-- Specification: The cabin should not move down below the ground floor
+CTLSPEC AG(c.direction_down -> !(f.floor = 1)); 
+
+-- Specification: There exists a path where if the button for floor 5 is pressed, the elevator eventually visits floor 5.
+CTLSPEC AG(b.button[5] & EF (f.floor = 5));
+
+-- Specification: There exists a path where if the button for floor 4 is pressed, the elevator eventually visits floor 4.
+CTLSPEC AG(b.button[4] & EF (f.floor = 4));
+
+-- Specification: There exists a path where if the button for floor 3 is pressed, the elevator eventually visits floor 3.
+CTLSPEC AG(b.button[3] & EF (f.floor = 3));
+
+-- Specification: There exists a path where if the button for floor 2 is pressed, the elevator eventually visits floor 2.
+CTLSPEC AG(b.button[2] & EF (f.floor = 2));
+
+-- Specification: There exists a path where if the button for floor 1 is pressed, the elevator eventually visits floor 1.
+CTLSPEC AG(b.button[1] & EF (f.floor = 1));
+
+-- Specification: If the elevator is on floor 1, 2, or 3, is moving up, and the button for floor 4 is pressed,
+-- then the elevator must eventually reach floor 4.
+CTLSPEC AG(((f.floor = 1 | f.floor = 2 | f.floor = 3) & c.direction_up & b.button[4]) -> AF (f.floor = 4));
+
+-- Specification: If the elevator is on floor 4 or 3, is moving down, and the button for floor 2 is pressed,
+-- then the elevator must eventually reach floor 2.
+CTLSPEC AG(((f.floor = 4 | f.floor = 3) & c.direction_down & b.button[2]) -> AF (f.floor = 2));
+
+-- Specification: If the elevator is moving (either up or down), the "moving" status must be true.
+CTLSPEC AG((c.direction_up | c.direction_down) -> f.moving);
+
+-- Specification: If the elevator is not moving (neither up nor down), the "moving" status must be false.
+CTLSPEC AG(!c.direction_up & !c.direction_down -> !f.moving);
+
+-- Specification: If the elevator is not moving, it must remain on the same floor.
+CTLSPEC AG(!f.moving -> AG(f.floor = f.floor));
+
+-- Specification: If any button is pressed, the elevator must eventually stop moving and open its door.
+-- This ensures that the elevator fulfills the user's request by stopping at the correct floor and allowing entry or exit.
+CTLSPEC AG(b.button_pressed -> EF (!f.moving & !d.door_closed));
+
+-- Specification: If the elevator is stationary and a button for the current floor is pressed, 
+-- the door must eventually open. This guarantees that the elevator responds to requests 
+-- at its current position by allowing passengers to enter or exit.
+CTLSPEC AG((b.button[f.floor] & f.moving = FALSE) -> !d.door_closed);
+
+-- Specification: If no buttons are pressed, the elevator must remain stationary.
+-- This prevents unnecessary movement, optimizing efficiency and reducing wear on the elevator system.
+CTLSPEC AG(!b.button_pressed -> !f.moving);
+
+
+
+
+
