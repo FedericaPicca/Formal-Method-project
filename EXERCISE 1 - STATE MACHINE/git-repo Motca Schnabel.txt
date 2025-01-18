@@ -1,3 +1,0 @@
-Git repository with Federica Picca
-
-https://github.com/FedericaPicca/Formal-Method-project.git
